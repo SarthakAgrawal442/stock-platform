@@ -2,8 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using StockPlatform.API.Database;
 using StockPlatform.API.Repositories;
 using StockPlatform.API.Services;
-using Polly;
-using Polly.Extensions.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,14 +9,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// HTTP Client for Python AI Service with circuit breaker
+// HTTP Client for Python AI Service with built-in resilience (circuit breaker + retry)
 builder.Services.AddHttpClient<IPythonAiService, PythonAiService>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["PythonService:BaseUrl"] ?? "http://localhost:8000");
+    client.Timeout = TimeSpan.FromSeconds(10);
 })
-.AddPolicyHandler(HttpPolicyExtensions
-    .HandleTransientHttpError()
-    .CircuitBreakerAsync(3, TimeSpan.FromSeconds(30)));
+.AddStandardResilienceHandler();
 
 // Dependency Injection
 builder.Services.AddScoped<ICompanyRepository, CompanyRepository>();
