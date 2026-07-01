@@ -14,6 +14,7 @@ A full-stack financial advisor platform built as a database-focused capstone pro
 | PostgreSQL | ✅ Connected | EF Core migrations applied |
 | EF Core Migrations | ✅ Done | `InitialCreate` applied |
 | Scalar API Docs | ✅ Live | `http://localhost:5000/scalar/v1` |
+| DB Schema + ER Diagram | ✅ Done | Partitioned tables, indexes, stored procs, materialized views |
 | Python AI Service | 🔜 Week 5-6 | FastAPI + ETL |
 | React Frontend | 🔜 Week 7-8 | Dashboard + Charts |
 | ML Model | 🔜 Week 9-10 | Random Forest classifier |
@@ -48,6 +49,117 @@ Entity Framework Core / Npgsql
 ```
 
 > ASP.NET Core never talks directly to Yahoo Finance or the LLM. It only communicates with PostgreSQL and the Python AI service.
+
+---
+
+## Database Design
+
+### ER Diagram
+
+```mermaid
+erDiagram
+    SECTORS {
+        int sector_id PK
+        varchar name
+        text description
+        timestamp created_at
+    }
+
+    COMPANIES {
+        int company_id PK
+        varchar ticker UK
+        varchar name
+        int sector_id FK
+        varchar industry
+        numeric market_cap
+        varchar country
+        varchar exchange
+        boolean is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    FINANCIALS {
+        int financial_id PK
+        int company_id FK
+        date report_date
+        int fiscal_year
+        smallint fiscal_quarter
+        varchar period_type
+        numeric revenue
+        numeric net_income
+        numeric eps
+        numeric ebitda
+        numeric roe
+        numeric roa
+        numeric debt_to_equity
+        numeric profit_margin
+        numeric revenue_growth
+        timestamp created_at
+    }
+
+    STOCK_PRICES {
+        bigint price_id PK
+        int company_id FK
+        date price_date
+        numeric open_price
+        numeric high_price
+        numeric low_price
+        numeric close_price
+        numeric adj_close
+        bigint volume
+        timestamp created_at
+    }
+
+    ML_PREDICTIONS {
+        int prediction_id PK
+        int company_id FK
+        varchar model_version
+        varchar classification
+        numeric confidence
+        jsonb top_features
+        timestamp predicted_at
+    }
+
+    ETL_LOG {
+        int log_id PK
+        timestamp run_date
+        varchar source
+        varchar status
+        int rows_loaded
+        text error_msg
+    }
+
+    SECTORS ||--o{ COMPANIES : "has"
+    COMPANIES ||--o{ FINANCIALS : "reports"
+    COMPANIES ||--o{ STOCK_PRICES : "trades at"
+    COMPANIES ||--o{ ML_PREDICTIONS : "classified by"
+```
+
+### Key Design Decisions
+
+- **`financials` is partitioned by `fiscal_year`** — yearly partitions (2020–2025) so queries scoped to a year skip irrelevant partitions entirely
+- **Ratios pre-computed at load time** — `roe`, `roa`, `debt_to_equity`, `revenue_growth` stored on the row so ML feature extraction is a simple `SELECT`
+- **Trigram GIN indexes on `companies.name` and `ticker`** — enables fast fuzzy search (`ILIKE '%apple%'`) used by the React search bar
+- **3 materialized views** — `mv_company_summary` (latest financials + price per company), `mv_sector_aggregates` (sector-level KPIs), `mv_growth_trends` (LAG-windowed YoY data for ML training)
+- **`etl_log` table** — every nightly ETL run is recorded with row counts and error messages for observability
+
+### Database Files
+
+```
+database/
+├── 01_schema.sql              — All tables + partitions
+├── 02_indexes.sql             — 14 indexes (composite, GIN trigram, partial)
+├── 03_materialized_views.sql  — 3 views + refresh_all_views()
+├── 04_stored_procedures.sql   — 5 stored procedures
+├── 05_seed_data.sql           — 10 sectors, 17 companies, 5yr financials
+└── 06_run_all.sql             — One-command full setup
+```
+
+To apply from scratch:
+```bash
+psql -U postgres -d stockplatform -f database/06_run_all.sql
+```
 
 ---
 
@@ -147,6 +259,14 @@ stock-platform/
 │   ├── Migrations/
 │   └── Program.cs
 │
+├── database/
+│   ├── 01_schema.sql
+│   ├── 02_indexes.sql
+│   ├── 03_materialized_views.sql
+│   ├── 04_stored_procedures.sql
+│   ├── 05_seed_data.sql
+│   └── 06_run_all.sql
+│
 ├── python-service/
 │   ├── api/
 │   │   ├── main.py
@@ -184,11 +304,11 @@ stock-platform/
 
 ### Companies
 ```
-GET    /api/companies              - List all companies
-GET    /api/companies/{id}         - Get company by ID
-GET    /api/companies/ticker/{ticker} - Get company by ticker
-POST   /api/companies              - Create company
-DELETE /api/companies/{id}         - Delete company
+GET    /api/companies                   - List all companies
+GET    /api/companies/{id}              - Get company by ID
+GET    /api/companies/ticker/{ticker}   - Get company by ticker
+POST   /api/companies                   - Create company
+DELETE /api/companies/{id}              - Delete company
 ```
 
 ### Financials
@@ -278,9 +398,9 @@ User: "Find profitable semiconductor companies with growing revenue"
 
 | Week | Focus | Status | Deliverable |
 |------|-------|--------|-------------|
-| 1-2 | DB Design | 🔜 Next | ER diagram, full schema, seed data |
+| 1-2 | DB Design | ✅ Done | ER diagram, full schema, indexes, stored procs, seed data |
 | 3-4 | ASP.NET Core | ✅ Done | CRUD APIs, EF Core, Scalar docs |
-| 5-6 | Python ETL + FastAPI | 🔜 | Nightly pipeline, `/health`, `/predict` |
+| 5-6 | Python ETL + FastAPI | 🔜 Next | Nightly pipeline, `/health`, `/predict` |
 | 7-8 | React Dashboard | 🔜 | Charts, search, company pages |
 | 9-10 | ML Model | 🔜 | Random Forest classifier, `.pkl` model |
 | 11 | LLM SQL + Validation | 🔜 | Chat UI, SQL guard middleware |
