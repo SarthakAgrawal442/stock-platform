@@ -1,50 +1,43 @@
 using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
 using StockPlatform.API.Database;
 using StockPlatform.API.Repositories;
 using StockPlatform.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// PostgreSQL via EF Core
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// HTTP Client for Python AI Service with built-in resilience (circuit breaker + retry)
 builder.Services.AddHttpClient<IPythonAiService, PythonAiService>(client =>
-{
-    client.BaseAddress = new Uri(builder.Configuration["PythonService:BaseUrl"] ?? "http://localhost:8000");
-    client.Timeout = TimeSpan.FromSeconds(10);
-})
-.AddStandardResilienceHandler();
+    {
+        client.BaseAddress = new Uri(builder.Configuration["PythonService:BaseUrl"] ?? "http://localhost:8000");
+        client.Timeout = TimeSpan.FromSeconds(10);
+    })
+    .AddStandardResilienceHandler();
 
-// Dependency Injection
 builder.Services.AddScoped<ICompanyRepository, CompanyRepository>();
 builder.Services.AddScoped<IFinancialRepository, FinancialRepository>();
 builder.Services.AddScoped<ICompanyService, CompanyService>();
 builder.Services.AddScoped<IFinancialService, FinancialService>();
 
 builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddOpenApi();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReact", policy =>
         policy.WithOrigins("http://localhost:3000")
-              .AllowAnyHeader()
-              .AllowAnyMethod());
+            .AllowAnyHeader()
+            .AllowAnyMethod());
 });
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.MapOpenApi();
+app.MapScalarApiReference();
 
 app.UseCors("AllowReact");
-app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 
