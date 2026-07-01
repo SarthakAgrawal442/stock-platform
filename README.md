@@ -2,6 +2,23 @@
 
 A full-stack financial advisor platform built as a database-focused capstone project. It combines a normalized PostgreSQL data warehouse, an ASP.NET Core REST API, a Python AI/data engine, and a React dashboard.
 
+![Status](https://img.shields.io/badge/API-Live-brightgreen) ![.NET](https://img.shields.io/badge/.NET-9.0-purple) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
+
+---
+
+## Project Status
+
+| Layer | Status | Notes |
+|-------|--------|-------|
+| ASP.NET Core API | ✅ Running | All CRUD endpoints live |
+| PostgreSQL | ✅ Connected | EF Core migrations applied |
+| EF Core Migrations | ✅ Done | `InitialCreate` applied |
+| Scalar API Docs | ✅ Live | `http://localhost:5000/scalar/v1` |
+| Python AI Service | 🔜 Week 5-6 | FastAPI + ETL |
+| React Frontend | 🔜 Week 7-8 | Dashboard + Charts |
+| ML Model | 🔜 Week 9-10 | Random Forest classifier |
+| LLM SQL Generator | 🔜 Week 11 | Natural language to SQL |
+
 ---
 
 ## Architecture
@@ -43,11 +60,12 @@ Entity Framework Core / Npgsql
 
 ### Backend
 - ASP.NET Core 9 Web API
-- Entity Framework Core
-- Npgsql
-- Polly (circuit breaker for Python service)
+- Entity Framework Core 9
+- Npgsql 9
+- Microsoft.Extensions.Http.Resilience (circuit breaker)
+- Scalar (API docs)
 
-### Database (PostgreSQL)
+### Database (PostgreSQL 16)
 - Normalization
 - Indexes + Composite Indexes
 - Stored Procedures
@@ -64,6 +82,55 @@ Entity Framework Core / Npgsql
 
 ---
 
+## Prerequisites
+
+- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- [Node.js 20+](https://nodejs.org/) (for React frontend - coming soon)
+
+---
+
+## Running Locally
+
+### 1. Clone the repo
+```bash
+git clone https://github.com/SarthakAgrawal442/stock-platform.git
+cd stock-platform
+```
+
+### 2. Start PostgreSQL
+```bash
+docker compose up postgres -d
+```
+
+### 3. Run the API
+```bash
+cd StockPlatform.API
+dotnet restore
+dotnet ef database update
+dotnet run
+```
+
+### 4. Open API docs
+```
+http://localhost:5000/scalar/v1
+```
+
+### Start all services (once all layers are built)
+```bash
+docker compose up
+```
+
+| Service | URL |
+|---------|-----|
+| React Frontend | http://localhost:3000 |
+| ASP.NET API | http://localhost:5000 |
+| Scalar API Docs | http://localhost:5000/scalar/v1 |
+| Python AI Service | http://localhost:8000 |
+| PostgreSQL | localhost:5432 |
+
+---
+
 ## Folder Structure
 
 ```
@@ -75,9 +142,9 @@ stock-platform/
 │   ├── Models/
 │   ├── DTOs/
 │   ├── Middleware/
-│   │   ├── SqlValidationMiddleware.cs
-│   │   └── PythonServiceCircuitBreaker.cs
+│   │   └── SqlValidationMiddleware.cs
 │   ├── Database/
+│   ├── Migrations/
 │   └── Program.cs
 │
 ├── python-service/
@@ -113,11 +180,36 @@ stock-platform/
 
 ---
 
+## API Endpoints
+
+### Companies
+```
+GET    /api/companies              - List all companies
+GET    /api/companies/{id}         - Get company by ID
+GET    /api/companies/ticker/{ticker} - Get company by ticker
+POST   /api/companies              - Create company
+DELETE /api/companies/{id}         - Delete company
+```
+
+### Financials
+```
+GET    /api/financials/company/{companyId} - Get financials for a company
+```
+
+### AI (Python Service - coming Week 5-6)
+```
+POST   /api/ai/predict   - ML growth classification
+POST   /api/ai/query     - Natural language to SQL
+GET    /api/ai/health    - Python service health check
+```
+
+---
+
 ## API Communication
 
 ### ML Prediction
 ```
-POST /api/ml/predict
+POST /api/ai/predict
 { "companyId": 105 }
 
 → {
@@ -129,7 +221,7 @@ POST /api/ml/predict
 
 ### LLM SQL Generation
 ```
-POST /api/llm/generate-sql
+POST /api/ai/query
 { "query": "Find profitable semiconductor companies with growing revenue" }
 
 → {
@@ -138,13 +230,7 @@ POST /api/llm/generate-sql
   }
 ```
 
-> AI-generated SQL is never executed directly. ASP.NET validates it against a whitelist (SELECT only, known tables, no DROP/DELETE/UPDATE).
-
-### Python Service Health Check
-```
-GET /health
-→ { "status": "ok", "model_loaded": true }
-```
+> AI-generated SQL is never executed directly. ASP.NET validates it against a whitelist (SELECT only, known tables, no DROP/DELETE/UPDATE/EXEC).
 
 ---
 
@@ -188,32 +274,17 @@ User: "Find profitable semiconductor companies with growing revenue"
 
 ---
 
-## Running Locally
-
-```bash
-# Start all services
-docker compose up
-
-# Services
-# React:        http://localhost:3000
-# ASP.NET API:  http://localhost:5000
-# Python API:   http://localhost:8000
-# PostgreSQL:   localhost:5432
-```
-
----
-
 ## Development Timeline
 
-| Week | Focus | Deliverable |
-|------|-------|-------------|
-| 1-2 | DB Design | ER diagram, schema, seed data |
-| 3-4 | ASP.NET Core | CRUD APIs, EF Core, Swagger |
-| 5-6 | Python ETL + FastAPI | Nightly pipeline, `/health`, `/predict` |
-| 7-8 | React Dashboard | Charts, search, company pages |
-| 9-10 | ML Model | Random Forest classifier, `.pkl` model |
-| 11 | LLM SQL + Validation | Chat UI, SQL guard middleware |
-| 12 | Polish | Docker Compose, docs, demo prep |
+| Week | Focus | Status | Deliverable |
+|------|-------|--------|-------------|
+| 1-2 | DB Design | 🔜 Next | ER diagram, full schema, seed data |
+| 3-4 | ASP.NET Core | ✅ Done | CRUD APIs, EF Core, Scalar docs |
+| 5-6 | Python ETL + FastAPI | 🔜 | Nightly pipeline, `/health`, `/predict` |
+| 7-8 | React Dashboard | 🔜 | Charts, search, company pages |
+| 9-10 | ML Model | 🔜 | Random Forest classifier, `.pkl` model |
+| 11 | LLM SQL + Validation | 🔜 | Chat UI, SQL guard middleware |
+| 12 | Polish | 🔜 | Docker Compose, docs, demo prep |
 
 ---
 
@@ -230,13 +301,13 @@ Financial Data → ETL Pipeline → Normalized PostgreSQL
 ```
 
 It demonstrates three distinct skill sets in one project:
-- **Software Engineering** - ASP.NET Core
-- **Database Engineering** - PostgreSQL
+- **Software Engineering** - ASP.NET Core 9
+- **Database Engineering** - PostgreSQL 16
 - **Data Engineering / AI** - Python + ML + LLM
 
 ---
 
 ## Author
 
-**Sarthak Agrawal** - Computer Science Student  
+**Sarthak Agrawal** - Computer Science Student
 [GitHub](https://github.com/SarthakAgrawal442)
