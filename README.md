@@ -11,8 +11,8 @@ A full-stack financial advisor platform built as a database-focused capstone pro
 | Layer | Status | Notes |
 |-------|--------|-------|
 | ASP.NET Core API | ✅ Running | All CRUD endpoints live |
-| PostgreSQL | ✅ Connected | EF Core migrations applied |
-| EF Core Migrations | ✅ Done | `InitialCreate` applied |
+| PostgreSQL | ✅ Connected | Schema created via SQL scripts |
+| EF Core Migrations | ✅ Done | `InitialBaseline` (empty baseline) applied |
 | Scalar API Docs | ✅ Live | `http://localhost:5000/scalar/v1` |
 | DB Schema + ER Diagram | ✅ Done | Partitioned tables, indexes, stored procs, materialized views |
 | Python AI Service | 🔜 Week 5-6 | FastAPI + ETL |
@@ -156,11 +156,6 @@ database/
 └── 06_run_all.sql             — One-command full setup
 ```
 
-To apply from scratch:
-```bash
-psql -U postgres -d stockplatform -f database/06_run_all.sql
-```
-
 ---
 
 ## Tech Stack
@@ -204,18 +199,34 @@ psql -U postgres -d stockplatform -f database/06_run_all.sql
 
 ## Running Locally
 
+> **Important:** The database schema is managed via SQL scripts, not EF migrations. Do not run `dotnet ef database update` before the database is created from the SQL scripts.
+
 ### 1. Clone the repo
 ```bash
 git clone https://github.com/SarthakAgrawal442/stock-platform.git
 cd stock-platform
 ```
 
-### 2. Start PostgreSQL
+### 2. Start PostgreSQL via Docker
 ```bash
 docker compose up postgres -d
 ```
 
-### 3. Run the API
+### 3. Create the database schema + seed data
+```bash
+# Copy SQL files into the container
+docker cp database/. stockplatform_db:/tmp/database/
+
+# Run from inside the container (paths resolve correctly from /tmp)
+docker exec -it stockplatform_db bash
+cd /tmp
+psql -U postgres -d stockplatform -f database/06_run_all.sql
+exit
+```
+
+This creates all tables, indexes, materialized views, stored procedures, and loads seed data (10 sectors, 17 companies, 5 years of financials).
+
+### 4. Run the API
 ```bash
 cd StockPlatform.API
 dotnet restore
@@ -223,15 +234,22 @@ dotnet ef database update
 dotnet run
 ```
 
-### 4. Open API docs
+> `dotnet ef database update` here just registers the `InitialBaseline` record in `__EFMigrationsHistory`. It does NOT recreate tables — the schema already exists from Step 3.
+
+### 5. Open API docs
 ```
 http://localhost:5000/scalar/v1
 ```
 
-### Start all services (once all layers are built)
+### Verify it's working
 ```bash
-docker compose up
+# Should return 17 companies with sectorName populated
+curl http://localhost:5000/api/companies
 ```
+
+---
+
+## Services
 
 | Service | URL |
 |---------|-----|
