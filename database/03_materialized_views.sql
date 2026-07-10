@@ -94,6 +94,7 @@ JOIN financials f ON f.company_id = c.company_id AND f.period_type = 'annual'
 WHERE c.is_active = TRUE
 ORDER BY c.company_id, f.fiscal_year;
 
+CREATE UNIQUE INDEX idx_mv_growth_unique  ON mv_growth_trends(company_id, fiscal_year);
 CREATE INDEX idx_mv_growth_company ON mv_growth_trends(company_id);
 CREATE INDEX idx_mv_growth_sector  ON mv_growth_trends(sector);
 CREATE INDEX idx_mv_growth_year    ON mv_growth_trends(fiscal_year);
