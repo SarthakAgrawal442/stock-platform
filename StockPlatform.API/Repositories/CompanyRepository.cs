@@ -14,15 +14,20 @@ public class CompanyRepository : ICompanyRepository
     }
 
     public async Task<IEnumerable<Company>> GetAllAsync() =>
-        await _context.Companies.AsNoTracking().ToListAsync();
+        await _context.Companies
+            .Include(c => c.Sector)
+            .AsNoTracking()
+            .ToListAsync();
 
     public async Task<Company?> GetByIdAsync(int id) =>
         await _context.Companies
+            .Include(c => c.Sector)
             .Include(c => c.Financials)
             .FirstOrDefaultAsync(c => c.CompanyId == id);
 
     public async Task<Company?> GetByTickerAsync(string ticker) =>
         await _context.Companies
+            .Include(c => c.Sector)
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Ticker == ticker.ToUpper());
 
