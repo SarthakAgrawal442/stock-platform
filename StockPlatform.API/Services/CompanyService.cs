@@ -35,10 +35,10 @@ public class CompanyService : ICompanyService
     {
         var company = new Company
         {
-            Ticker = dto.Ticker.ToUpper(),
-            Name = dto.Name,
-            Sector = dto.Sector,
-            Industry = dto.Industry,
+            Ticker    = dto.Ticker.ToUpper(),
+            Name      = dto.Name,
+            SectorId  = dto.SectorId,
+            Industry  = dto.Industry,
             MarketCap = dto.MarketCap
         };
         var created = await _repo.CreateAsync(company);
@@ -48,6 +48,12 @@ public class CompanyService : ICompanyService
     public Task<bool> DeleteAsync(int id) => _repo.DeleteAsync(id);
 
     private static CompanyDto ToDto(Company c) => new(
-        c.CompanyId, c.Ticker, c.Name, c.Sector, c.Industry, c.MarketCap
+        c.CompanyId,
+        c.Ticker,
+        c.Name,
+        c.SectorId,
+        c.Sector?.Name,
+        c.Industry,
+        c.MarketCap
     );
 }

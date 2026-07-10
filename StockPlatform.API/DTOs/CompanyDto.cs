@@ -4,7 +4,8 @@ public record CompanyDto(
     int CompanyId,
     string Ticker,
     string Name,
-    string? Sector,
+    int? SectorId,
+    string? SectorName,
     string? Industry,
     decimal? MarketCap
 );
@@ -12,7 +13,7 @@ public record CompanyDto(
 public record CreateCompanyDto(
     string Ticker,
     string Name,
-    string? Sector,
+    int? SectorId,
     string? Industry,
     decimal? MarketCap
 );
